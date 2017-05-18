@@ -861,6 +861,7 @@ enum {
     MG_ERR_INTERNAL,
     MG_ERR_INVALID_REQUEST_SIZE,
     MG_ERR_HTTP_VERSION,
+    MG_ERR_CANCELLED,
 
     MG_ERR_HTTP_STATUS_BASE       = 2000000
 };
@@ -1087,6 +1088,7 @@ mg_connect_websocket_client(const char *host,
                             struct mg_error *error,
                             const char *path,
                             const char *origin,
+                            mg_websocket_connect_handler connect_func,
                             mg_websocket_data_handler data_func,
                             mg_websocket_close_handler close_func,
                             void *user_data);

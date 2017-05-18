@@ -14037,6 +14037,7 @@ mg_connect_websocket_client(const char *host,
                             struct mg_error *error,
                             const char *path,
                             const char *origin,
+                            mg_websocket_connect_handler connect_func,
                             mg_websocket_data_handler data_func,
                             mg_websocket_close_handler close_func,
                             void *user_data)
@@ -14078,6 +14079,15 @@ mg_connect_websocket_client(const char *host,
 	                   host,
 	                   magic,
 	                   origin);
+
+    if (conn != NULL && connect_func != NULL && connect_func(conn, user_data) != 0) {
+        set_error(conn,
+                  error,
+                  MG_ERR_CANCELLED,
+                  "Connection cancelled by callback");
+        mg_free(conn);
+        return NULL;
+    }
 
 	/* Connection object will be null if something goes wrong */
 	if (conn == NULL || (strcmp(conn->request_info.request_uri, "101") != 0)) {
