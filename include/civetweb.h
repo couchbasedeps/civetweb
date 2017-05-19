@@ -1085,13 +1085,25 @@ CIVETWEB_API struct mg_connection *
 mg_connect_websocket_client(const char *host,
                             int port,
                             int use_ssl,
-                            struct mg_error *error,
+                            char *error_buffer,
+                            size_t error_buffer_size,
                             const char *path,
                             const char *origin,
-                            mg_websocket_connect_handler connect_func,
                             mg_websocket_data_handler data_func,
                             mg_websocket_close_handler close_func,
                             void *user_data);
+
+CIVETWEB_API struct mg_connection *
+mg_connect_websocket_client2(const char *host,
+                             int port,
+                             int use_ssl,
+                             struct mg_error *error,
+                             const char *path,
+                             const char *extraHeaders,
+                             mg_websocket_connect_handler connect_func,
+                             mg_websocket_data_handler data_func,
+                             mg_websocket_close_handler close_func,
+                             void *user_data);
 
 
 /* Connect to a TCP server as a client (can be used to connect to a HTTP server)

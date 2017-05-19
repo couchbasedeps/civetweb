@@ -14034,14 +14034,43 @@ struct mg_connection *
 mg_connect_websocket_client(const char *host,
                             int port,
                             int use_ssl,
-                            struct mg_error *error,
+                            char *error_buffer,
+                            size_t error_buffer_size,
                             const char *path,
                             const char *origin,
+                            mg_websocket_data_handler data_func,
+                            mg_websocket_close_handler close_func,
+                            void *user_data)
+{
+    struct mg_error error = {error_buffer, error_buffer_size, 0};
+    char originBuf[256];
+    const char *extraHeaders = NULL;
+    if (origin) {
+        int truncated;
+        mg_snprintf(NULL, &truncated, originBuf, sizeof(originBuf), "Origin: %s\r\n", origin);
+        if (truncated) {
+            set_error(NULL, &error, MG_ERR_INVALID_REQUEST_SIZE, "Origin string too long");
+            return NULL;
+        }
+        extraHeaders = originBuf;
+    }
+    return mg_connect_websocket_client2(host, port, use_ssl, &error, path, extraHeaders,
+                                        NULL, data_func, close_func, user_data);
+}
+
+struct mg_connection *
+mg_connect_websocket_client2(const char *host,
+                            int port,
+                            int use_ssl,
+                            struct mg_error *error,
+                            const char *path,
+                            const char *extraHeaders,
                             mg_websocket_connect_handler connect_func,
                             mg_websocket_data_handler data_func,
                             mg_websocket_close_handler close_func,
                             void *user_data)
 {
+
 	struct mg_connection *conn = NULL;
 
 #if defined(USE_WEBSOCKET)
@@ -14050,24 +14079,13 @@ mg_connect_websocket_client(const char *host,
 	static const char *magic = "x3JJHMbDL1EzLkh9GBhXDw==";
 	static const char *handshake_req;
 
-	if (origin != NULL) {
-		handshake_req = "GET %s HTTP/1.1\r\n"
-		                "Host: %s\r\n"
-		                "Upgrade: websocket\r\n"
-		                "Connection: Upgrade\r\n"
-		                "Sec-WebSocket-Key: %s\r\n"
-		                "Sec-WebSocket-Version: 13\r\n"
-		                "Origin: %s\r\n"
-		                "\r\n";
-	} else {
-		handshake_req = "GET %s HTTP/1.1\r\n"
-		                "Host: %s\r\n"
-		                "Upgrade: websocket\r\n"
-		                "Connection: Upgrade\r\n"
-		                "Sec-WebSocket-Key: %s\r\n"
-		                "Sec-WebSocket-Version: 13\r\n"
-		                "\r\n";
-	}
+    handshake_req = "GET %s HTTP/1.1\r\n"
+                    "Host: %s\r\n"
+                    "Upgrade: websocket\r\n"
+                    "Connection: Upgrade\r\n"
+                    "Sec-WebSocket-Key: %s\r\n"
+                    "Sec-WebSocket-Version: 13\r\n"
+                    "%s\r\n";
 
 	/* Establish the client connection and request upgrade */
 	conn = mg_download(host,
@@ -14078,7 +14096,7 @@ mg_connect_websocket_client(const char *host,
 	                   path,
 	                   host,
 	                   magic,
-	                   origin);
+                       (extraHeaders ? extraHeaders : ""));
 
     if (conn != NULL && connect_func != NULL && connect_func(conn, user_data) != 0) {
         set_error(conn,
