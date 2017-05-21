@@ -10447,14 +10447,17 @@ handle_websocket_request(struct mg_connection *conn,
 			}
 		}
 
-		if (ws_connect_handler != NULL
-		    && ws_connect_handler(conn, cbData) != 0) {
-			/* C callback has returned non-zero, do not proceed with
-			 * handshake.
-			 */
-			/* Note that C callbacks are no longer called when Lua is
-			 * responsible, so C can no longer filter callbacks for Lua. */
-			return;
+        if (ws_connect_handler != NULL) {
+            int status = ws_connect_handler(conn, cbData);
+            if (status != 0) {
+                /* C callback has returned non-zero, do not proceed with
+                 * handshake.
+                 */
+                /* Note that C callbacks are no longer called when Lua is
+                 * responsible, so C can no longer filter callbacks for Lua. */
+                conn->status_code = status;
+                return;
+            }
 		}
 	}
 #if defined(USE_LUA)
