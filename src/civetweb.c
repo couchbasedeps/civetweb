@@ -3100,6 +3100,14 @@ mg_get_header(const struct mg_connection *conn, const char *name)
 }
 
 
+void mg_get_remote_address(const struct mg_connection *conn, char *address, size_t address_size,
+                           int *port)
+{
+    sockaddr_to_string(address, address_size, &conn->client.rsa);
+    *port = ntohs(conn->client.rsa.sin.sin_port);
+}
+
+
 /* A helper function for traversing a comma separated list of values.
  * It returns a list pointer shifted to the next value, or NULL if the end
  * of the list found.

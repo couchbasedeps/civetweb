@@ -761,6 +761,13 @@ CIVETWEB_API const char *mg_get_header(const struct mg_connection *,
                                        const char *name);
 
 
+/* Get the IP address of the client. */
+CIVETWEB_API void mg_get_remote_address(const struct mg_connection *conn,
+                                        char *address,
+                                        size_t address_size,
+                                        int *port);
+
+
 /* Get a value of particular form variable.
 
    Parameters:
