@@ -14177,8 +14177,9 @@ mg_connect_websocket_client2(const char *host,
 	(void)use_ssl;
 	(void)error;
 	(void)path;
-	(void)origin;
+    (void)extraHeaders;
 	(void)user_data;
+    (void)connect_func;
 	(void)data_func;
 	(void)close_func;
 #endif
