@@ -26,6 +26,8 @@
 #endif
 #ifndef _WIN32_WINNT /* defined for tdm-gcc so we can use getnameinfo */
 #define _WIN32_WINNT 0x0501
+#else
+#include <winapifamily.h>
 #endif
 #else
 #if defined(__GNUC__) && !defined(_GNU_SOURCE)
@@ -276,7 +278,7 @@ mg_static_assert(PATH_MAX >= 1, "path length must be a positive number");
 #endif
 #endif
 
-#ifndef _WIN32_WCE
+#if !defined(_WIN32_WCE) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 #include <process.h>
 #include <direct.h>
 #include <io.h>
@@ -4227,7 +4229,7 @@ static void
 set_close_on_exec(SOCKET sock, struct mg_connection *conn /* may be null */)
 {
 	(void)conn; /* Unused. */
-#if defined(_WIN32_WCE)
+#if defined(_WIN32_WCE) || WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 	(void)sock;
 #else
 	(void)SetHandleInformation((HANDLE)(intptr_t)sock, HANDLE_FLAG_INHERIT, 0);
