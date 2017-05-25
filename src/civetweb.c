@@ -278,17 +278,18 @@ mg_static_assert(PATH_MAX >= 1, "path length must be a positive number");
 #endif
 #endif
 
-#if !defined(_WIN32_WCE) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 #include <process.h>
 #include <direct.h>
 #include <io.h>
-#else            /* _WIN32_WCE */
+#if defined(_WIN32_WCE) || WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 #define NO_CGI   /* WinCE has no pipes */
 #define NO_POPEN /* WinCE has no popen */
 
 typedef long off_t;
 
+#ifndef errno
 #define errno ((int)(GetLastError()))
+#endif
 #define strerror(x) (_ultoa(x, (char *)_alloca(sizeof(x) * 3), 10))
 #endif /* _WIN32_WCE */
 
@@ -4308,6 +4309,11 @@ mg_join_thread(pthread_t threadid)
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#define dodlopen(buf) LoadPackagedLibrary(buf, 0)
+#else
+#define dodlopen(buf) LoadLibraryW(buf)
+#endif
 
 static HANDLE
 dlopen(const char *dll_name, int flags)
@@ -4315,7 +4321,7 @@ dlopen(const char *dll_name, int flags)
 	wchar_t wbuf[PATH_MAX];
 	(void)flags;
 	path_to_unicode(NULL, dll_name, wbuf, ARRAY_SIZE(wbuf));
-	return LoadLibraryW(wbuf);
+	return dodlopen(wbuf);
 }
 
 
@@ -15003,6 +15009,8 @@ get_system_name(char **sysName)
 #if !defined(__SYMBIAN32__)
 #if defined(_WIN32_WCE)
 	*sysName = mg_strdup("WinCE");
+#elif WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+    *sysName = mg_strdup("UWP");
 #else
 	char name[128];
 	DWORD dwVersion = 0;
@@ -15457,7 +15465,7 @@ mg_get_system_info_impl(char *buffer, int buflen)
 	/* System info */
 	{
 #if defined(_WIN32)
-#if !defined(__SYMBIAN32__)
+#if !defined(__SYMBIAN32__) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 		DWORD dwVersion = 0;
 		DWORD dwMajorVersion = 0;
 		DWORD dwMinorVersion = 0;
@@ -15505,6 +15513,12 @@ mg_get_system_info_impl(char *buffer, int buflen)
 			strcat(buffer, block);
 		}
 
+#elif WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+        mg_snprintf(NULL, NULL, block, sizeof(block), "%s - UWP%s", eol);
+        system_info_length += (int)strlen(block);
+        if (system_info_length < buflen) {
+            strcat(buffer, block);
+        }
 #else
 		mg_snprintf(NULL, NULL, block, sizeof(block), "%s - Symbian%s", eol);
 		system_info_length += (int)strlen(block);
