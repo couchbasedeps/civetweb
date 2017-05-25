@@ -4331,6 +4331,19 @@ dlclose(void *handle)
 	return result;
 }
 
+static const char*
+dlerror()
+{
+    static char buf[32];
+    DWORD dw = GetLastError();
+    if (dw == 0) {
+        return NULL;
+    }
+
+    sprintf(buf, "error 0x%x", (unsigned int)dw);
+    return buf;
+}
+
 
 #if defined(__MINGW32__)
 /* Enable unused function warning again */
