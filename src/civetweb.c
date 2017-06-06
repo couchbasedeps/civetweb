@@ -2609,6 +2609,7 @@ set_error(const struct mg_connection *conn,
     va_start(ap, fmt);
     mg_vsnprintf(conn, NULL, error->buffer, error->buffer_size, fmt, ap);
     va_end(ap);
+    assert(code != 0);
     error->code = code;
 }
 
@@ -7238,24 +7239,16 @@ is_valid_port(unsigned long port)
 
 
 static int
-mg_inet_pton(int af, const char *src, void *dst, size_t dstlen)
+mg_inet_pton(int af, const char *src, void *dst, size_t dstlen, int *gaiErrCode)
 {
 	struct addrinfo hints, *res, *ressave;
 	int func_ret = 0;
-	int gai_ret;
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_family = af;
 
-	gai_ret = getaddrinfo(src, NULL, &hints, &res);
-	if (gai_ret != 0) {
-		/* gai_strerror could be used to convert gai_ret to a string */
-		/* POSIX return values: see
-		 * http://pubs.opengroup.org/onlinepubs/9699919799/functions/freeaddrinfo.html
-		 */
-		/* Windows return values: see
-		 * https://msdn.microsoft.com/en-us/library/windows/desktop/ms738520%28v=vs.85%29.aspx
-		 */
+    *gaiErrCode = getaddrinfo(src, NULL, &hints, &res);
+    if (*gaiErrCode != 0) {
 		return 0;
 	}
 
@@ -7268,6 +7261,9 @@ mg_inet_pton(int af, const char *src, void *dst, size_t dstlen)
 		}
 		res = res->ai_next;
 	}
+    if (!func_ret) {
+        *gaiErrCode = EAI_OVERFLOW;
+    }
 
 	freeaddrinfo(ressave);
 	return func_ret;
@@ -7337,11 +7333,12 @@ connect_socket(struct mg_context *ctx /* may be NULL */,
 	(void)use_ssl;
 #endif /* !defined(NO_SSL) */
 
-	if (mg_inet_pton(AF_INET, host, &sa->sin, sizeof(sa->sin))) {
+    int gaiErrCode;
+	if (mg_inet_pton(AF_INET, host, &sa->sin, sizeof(sa->sin), &gaiErrCode)) {
 		sa->sin.sin_port = htons((uint16_t)port);
 		ip_ver = 4;
 #ifdef USE_IPV6
-	} else if (mg_inet_pton(AF_INET6, host, &sa->sin6, sizeof(sa->sin6))) {
+	} else if (mg_inet_pton(AF_INET6, host, &sa->sin6, sizeof(sa->sin6), &gaiErrCode)) {
 		sa->sin6.sin6_port = htons((uint16_t)port);
 		ip_ver = 6;
 	} else if (host[0] == '[') {
@@ -7351,7 +7348,7 @@ connect_socket(struct mg_context *ctx /* may be NULL */,
 		char *h = (l > 1) ? mg_strdup(host + 1) : NULL;
 		if (h) {
 			h[l - 1] = 0;
-			if (mg_inet_pton(AF_INET6, h, &sa->sin6, sizeof(sa->sin6))) {
+			if (mg_inet_pton(AF_INET6, h, &sa->sin6, sizeof(sa->sin6), &gaiErrCode)) {
 				sa->sin6.sin6_port = htons((uint16_t)port);
 				ip_ver = 6;
 			}
@@ -7361,11 +7358,12 @@ connect_socket(struct mg_context *ctx /* may be NULL */,
 	}
 
 	if (ip_ver == 0) {
+        int err = (gaiErrCode == EAI_NONAME) ? MG_ERR_HOST_NOT_FOUND : MG_ERR_DNS_FAILURE;
         set_error(NULL,
                   error,
-                  ERRNO,
+                  err,
                   "%s",
-                  "host not found");
+                  gai_strerror(gaiErrCode));
 		return 0;
 	}
 
@@ -11780,6 +11778,7 @@ parse_port_string(const struct vec *vec, struct socket *so, int *ip_version)
 {
 	unsigned int a, b, c, d, port;
 	int ch, len;
+    int gaiErr;
 #if defined(USE_IPV6)
 	char buf[100] = {0};
 #endif
@@ -11802,7 +11801,7 @@ parse_port_string(const struct vec *vec, struct socket *so, int *ip_version)
 #if defined(USE_IPV6)
 	} else if (sscanf(vec->ptr, "[%49[^]]]:%u%n", buf, &port, &len) == 2
 	           && mg_inet_pton(
-	                  AF_INET6, buf, &so->lsa.sin6, sizeof(so->lsa.sin6))) {
+	                  AF_INET6, buf, &so->lsa.sin6, sizeof(so->lsa.sin6), &gaiErr)) {
 		/* IPv6 address, examples: see above */
 		/* so->lsa.sin6.sin6_family = AF_INET6; already set by mg_inet_pton
 		 */
@@ -14141,13 +14140,13 @@ mg_connect_websocket_client2(const char *host,
 
 	/* Connection object will be null if something goes wrong */
 	if (conn == NULL || (strcmp(conn->request_info.request_uri, "101") != 0)) {
-		if (error->code == 0) {
+		if (error->code == 0 && conn) {
 			/* if there is a connection, but it did not return 101,
 			 * error is not yet set */
-            int status = strtol(conn->request_info.request_uri, NULL, 10);
+            int httpStatus = strtol(conn->request_info.request_uri, NULL, 10);
             set_error(conn,
                       error,
-                      MG_ERR_HTTP_STATUS_BASE + status,
+                      MG_ERR_HTTP_STATUS_BASE + httpStatus,
                       "Unexpected response status %s",
                       conn->request_info.request_uri);
 		}
