@@ -259,6 +259,9 @@ mg_static_assert(sizeof(size_t) == 4 || sizeof(size_t) == 8,
 #include <windows.h>
 #include <winsock2.h> /* DTL add for SO_EXCLUSIVE */
 #include <ws2tcpip.h>
+#ifndef EAI_OVERFLOW
+#define EAI_OVERFLOW   -12   /* Argument buffer overflow.  */
+#endif
 
 typedef const char *SOCK_OPT_TYPE;
 
