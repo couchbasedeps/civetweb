@@ -284,7 +284,7 @@ mg_static_assert(PATH_MAX >= 1, "path length must be a positive number");
 #include <process.h>
 #include <direct.h>
 #include <io.h>
-#if defined(_WIN32_WCE) || WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#if defined(_WIN32_WCE)
 #define NO_CGI   /* WinCE has no pipes */
 #define NO_POPEN /* WinCE has no popen */
 
@@ -4234,7 +4234,7 @@ static void
 set_close_on_exec(SOCKET sock, struct mg_connection *conn /* may be null */)
 {
 	(void)conn; /* Unused. */
-#if defined(_WIN32_WCE) || WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#if defined(_WIN32_WCE) || (defined(_MSC_VER) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP))
 	(void)sock;
 #else
 	(void)SetHandleInformation((HANDLE)(intptr_t)sock, HANDLE_FLAG_INHERIT, 0);
@@ -4313,7 +4313,7 @@ mg_join_thread(pthread_t threadid)
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#if defined(_MSC_VER) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 #define dodlopen(buf) LoadPackagedLibrary(buf, 0)
 #else
 #define dodlopen(buf) LoadLibraryW(buf)
@@ -15011,7 +15011,7 @@ get_system_name(char **sysName)
 #if !defined(__SYMBIAN32__)
 #if defined(_WIN32_WCE)
 	*sysName = mg_strdup("WinCE");
-#elif WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#elif !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
     *sysName = mg_strdup("UWP");
 #else
 	char name[128];
@@ -15467,7 +15467,7 @@ mg_get_system_info_impl(char *buffer, int buflen)
 	/* System info */
 	{
 #if defined(_WIN32)
-#if !defined(__SYMBIAN32__) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#if !defined(__SYMBIAN32__) && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
 		DWORD dwVersion = 0;
 		DWORD dwMajorVersion = 0;
 		DWORD dwMinorVersion = 0;
@@ -15515,7 +15515,7 @@ mg_get_system_info_impl(char *buffer, int buflen)
 			strcat(buffer, block);
 		}
 
-#elif WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#elif defined(_MSC_VER) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
         mg_snprintf(NULL, NULL, block, sizeof(block), "%s - UWP%s", eol);
         system_info_length += (int)strlen(block);
         if (system_info_length < buflen) {
