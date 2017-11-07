@@ -7408,14 +7408,34 @@ connect_socket(struct mg_context *ctx /* may be NULL */,
 	}
 #endif
 
+#if defined(_WIN32) && !defined(__SYMBIAN32__)
+	int err = WSAGetLastError();
+	char* msg = NULL;
+	int count = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL);
+	char* end = msg + count - 1;
+	while(end > msg && isspace((unsigned char*)*end)) {
+		end--;
+	}
+
+	*(end + 1) = 0;
+#else
+	int err = ERRNO;
+	char* msg = strerror(err);
+#endif
+
 	/* Not connected */
     set_error(NULL,
               error,
-              ERRNO,
+              err,
               "connect(%s:%d): %s",
               host,
               port,
-              strerror(ERRNO));
+              msg);
+
+#if defined(_WIN32) && !defined(__SYMBIAN32__)
+	LocalFree(msg);
+#endif
+
 	closesocket(*sock);
 	*sock = INVALID_SOCKET;
 
@@ -14948,9 +14968,6 @@ free_context(struct mg_context *ctx)
 
 	/* Deallocate the tls variable */
 	if (mg_atomic_dec(&sTlsInit) == 0) {
-#if defined(_WIN32) && !defined(__SYMBIAN32__)
-		DeleteCriticalSection(&global_log_file_lock);
-#endif /* _WIN32 && !__SYMBIAN32__ */
 #if !defined(_WIN32)
 		pthread_mutexattr_destroy(&pthread_mutex_attr);
 #endif
@@ -15087,9 +15104,6 @@ mg_start(const struct mg_callbacks *callbacks,
 
 	if (mg_atomic_inc(&sTlsInit) == 1) {
 
-#if defined(_WIN32) && !defined(__SYMBIAN32__)
-		InitializeCriticalSection(&global_log_file_lock);
-#endif /* _WIN32 && !__SYMBIAN32__ */
 #if !defined(_WIN32)
 		pthread_mutexattr_init(&pthread_mutex_attr);
 		pthread_mutexattr_settype(&pthread_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
@@ -15831,6 +15845,7 @@ mg_init_library(unsigned features)
 #if defined(_WIN32) && !defined(__SYMBIAN32__)
 		WSADATA data;
 		WSAStartup(MAKEWORD(2, 2), &data);
+		InitializeCriticalSection(&global_log_file_lock);
 #endif /* _WIN32 && !__SYMBIAN32__ */
 		mg_init_library_called = 1;
 	} else {
@@ -15852,6 +15867,7 @@ mg_exit_library(void)
 	if (mg_init_library_called == 0) {
 #if defined(_WIN32) && !defined(__SYMBIAN32__)
 		(void)WSACleanup();
+		DeleteCriticalSection(&global_log_file_lock);
 #endif /* _WIN32 && !__SYMBIAN32__ */
 #if !defined(NO_SSL)
 		if (mg_ssl_initialized) {
