@@ -7413,7 +7413,7 @@ connect_socket(struct mg_context *ctx /* may be NULL */,
 	char* msg = NULL;
 	int count = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&msg, 0, NULL);
 	char* end = msg + count - 1;
-	while(end > msg && isspace((unsigned char*)*end)) {
+	while(end > msg && isspace((int)*end)) {
 		end--;
 	}
 
