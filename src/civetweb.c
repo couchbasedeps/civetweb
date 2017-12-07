@@ -14170,8 +14170,9 @@ mg_connect_websocket_client2(const char *host,
             set_error(conn,
                       error,
                       MG_ERR_HTTP_STATUS_BASE + httpStatus,
-                      "Unexpected response status %s",
-                      conn->request_info.request_uri);
+                      "Unexpected response status %s %s",
+                      conn->request_info.request_uri,
+                      conn->request_info.http_version);
 		}
 		DEBUG_TRACE("Websocket client connect error: %s\r\n", error->buffer);
 		if (conn != NULL) {
