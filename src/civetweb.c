@@ -4923,10 +4923,6 @@ push(struct mg_context *ctx,
 			}
 		}
 
-		if (ctx->stop_flag) {
-			return -1;
-		}
-
 		if ((n > 0) || (n == 0 && len == 0)) {
 			/* some data has been read, or no data was requested */
 			return n;
@@ -4943,6 +4939,10 @@ push(struct mg_context *ctx,
 			 */
 			return -1;
 		}
+
+        if (ctx->stop_flag) {
+            return -1;
+        }
 
 		/* Only in case n=0 (timeout), repeat calling the write function */
 
@@ -10202,9 +10202,7 @@ read_websocket(struct mg_connection *conn,
 				mg_free(data);
 			}
 
-			if (exit_by_callback
-			    || ((mop & 0xf) == WEBSOCKET_OPCODE_CONNECTION_CLOSE)) {
-				/* Opcode == 8, connection close */
+			if (exit_by_callback) {
 				break;
 			}
 
