@@ -117,7 +117,7 @@
  * replacement function here. */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ > 201100L
 #define mg_static_assert _Static_assert
-#elif defined(__cplusplus) && __cplusplus >= 201103L
+#elif defined(__cplusplus) && __cplusplus >= 201103L || _MSC_VER >= 1900
 #define mg_static_assert static_assert
 #else
 char static_assert_replacement[1];
@@ -214,7 +214,8 @@ K_THREAD_STACK_ARRAY_DEFINE(civetweb_worker_stacks,
                             ZEPHYR_STACK_SIZE);
 
 static int zephyr_worker_stack_index;
-
+#elif defined(_MSC_VER)
+#include <winapifamily.h>
 #endif
 
 #if !defined(CIVETWEB_HEADER_INCLUDED)
@@ -5246,7 +5247,11 @@ set_close_on_exec(SOCKET sock,
 	(void)conn; /* Unused. */
 	(void)ctx;
 
+#if defined(_MSC_VER) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 	(void)SetHandleInformation((HANDLE)(intptr_t)sock, HANDLE_FLAG_INHERIT, 0);
+ #else
+    (void)sock;
+#endif
 }
 
 
