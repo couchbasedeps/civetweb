@@ -5249,8 +5249,8 @@ set_close_on_exec(SOCKET sock,
 
 #if defined(_MSC_VER) && !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
 	(void)SetHandleInformation((HANDLE)(intptr_t)sock, HANDLE_FLAG_INHERIT, 0);
- #else
-    (void)sock;
+#else
+	(void)sock;
 #endif
 }
 
@@ -19413,6 +19413,9 @@ static void
 get_system_name(char **sysName)
 {
 #if defined(_WIN32)
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+	*sysName = mg_strdup("UWP");
+#else
 	char name[128];
 	DWORD dwVersion = 0;
 	DWORD dwMajorVersion = 0;
@@ -19445,7 +19448,7 @@ get_system_name(char **sysName)
 
 	*sysName = mg_strdup(name);
 
-
+#endif
 #elif defined(__ZEPHYR__)
 	*sysName = mg_strdup("Zephyr OS");
 #else
@@ -20502,6 +20505,14 @@ mg_get_system_info(char *buffer, int buflen)
 	/* System info */
 	{
 #if defined(_WIN32)
+
+#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+        mg_snprintf(NULL, NULL, block, sizeof(block), "%s - UWP%s", eol);
+        system_info_length += (int)strlen(block);
+        if (system_info_length < buflen) {
+            strcat(buffer, block);
+        }
+#else
 		DWORD dwVersion = 0;
 		DWORD dwMajorVersion = 0;
 		DWORD dwMinorVersion = 0;
@@ -20542,6 +20553,7 @@ mg_get_system_info(char *buffer, int buflen)
 		            (unsigned)si.dwNumberOfProcessors,
 		            (unsigned)si.dwActiveProcessorMask);
 		system_info_length += mg_str_append(&buffer, end, block);
+#endif
 #elif defined(__ZEPHYR__)
 		mg_snprintf(NULL,
 		            NULL,
